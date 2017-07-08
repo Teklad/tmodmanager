@@ -9,6 +9,8 @@
 namespace TMM {
 /**
  * @brief This class reads and stores tmod file information for access in the UI.
+ *        Most of the functions in here have been converted from their C# counterparts from
+ *        tModLoader.
  */
 class TmodFile {
     public:
@@ -16,7 +18,6 @@ class TmodFile {
         ~TmodFile();
         int Read();
         std::vector<uint8_t> GetFileData(const std::string &fileName);
-        const std::string &GetDescription();
         const std::string &GetName();
         const std::string &GetVersion();
     private:
@@ -45,9 +46,7 @@ class TmodFile {
         std::string m_name;
         std::string m_version;
         std::string m_path;
-        std::string m_url;
         std::string m_tModLoaderVersion;
-        std::string m_description;
         uint8_t m_hash[20];
         uint8_t m_signature[256];
         long int m_dataLoc;

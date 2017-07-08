@@ -253,11 +253,6 @@ int TmodFile::Read()
     return 0;
 }
 
-const std::string &TmodFile::GetDescription()
-{
-    return m_description;
-}
-
 const std::string &TmodFile::GetName()
 {
     return m_name;
