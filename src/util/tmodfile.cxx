@@ -1,5 +1,6 @@
 #include <openssl/sha.h>
 
+#include <iostream>
 #include <stdexcept>
 #include <stdio.h>
 #include <string.h>
@@ -21,34 +22,26 @@ namespace TMM {
  *     -1 - Inflate data error
  */
 
-static inline int decompress(std::vector<uint8_t>& in, std::vector<uint8_t> &out)
+static inline long int decompress(std::vector<uint8_t>& in, 
+    long int inSize, std::vector<uint8_t> &out)
 {
-    const size_t BUFSIZE = 1024;
-    uint8_t temp_buffer[BUFSIZE];
-    z_stream strm;
-    strm.zalloc = 0;
-    strm.zfree = 0;
-    strm.opaque = 0;
-    strm.next_in = &in[0];
-    strm.avail_in = in.size();
-    strm.next_out = temp_buffer;
-    strm.avail_out = BUFSIZE;
-    
-    inflateInit2(&strm, -15);
-    while (strm.avail_in != 0) {
-        int res = inflate(&strm, Z_NO_FLUSH);
-        if (res != Z_OK && res != Z_STREAM_END) {
-            return -1;
+    auto ret = Z_OK;
+    const size_t BUFSIZE = 1024 * 32;
+    uint8_t chunk[BUFSIZE];
+    z_stream zs = {Z_NULL};
+    zs.next_in = &in[0];
+    zs.avail_in = inSize;
+    inflateInit2(&zs, -15);
+    do {
+        zs.next_out = chunk;
+        zs.avail_out = BUFSIZE;
+        ret = inflate(&zs, Z_NO_FLUSH);
+        if (zs.avail_out < BUFSIZE) {
+            out.insert(out.end(), chunk, chunk + BUFSIZE);
         }
-        if (strm.avail_out == 0) {
-            out.insert(out.end(), temp_buffer, temp_buffer + BUFSIZE);
-            strm.next_out = temp_buffer;
-            strm.avail_out = BUFSIZE;
-        }
-    }
-    out.insert(out.end(), temp_buffer, temp_buffer + BUFSIZE - strm.avail_out);
-    inflateEnd(&strm);
-    return 0;
+    } while (ret == Z_OK);
+    inflateEnd(&zs);
+    return (ret != Z_STREAM_END ? -1 : zs.total_out);
 }
 
 TmodFile::TmodFile(const std::string &path)
@@ -58,6 +51,11 @@ TmodFile::TmodFile(const std::string &path)
 
 TmodFile::~TmodFile()
 {
+}
+
+TmodFile::Properties::Properties()
+{
+    modReferences.clear();
 }
 
 /**
@@ -114,7 +112,9 @@ std::string TmodFile::GetProperty(Prop p)
         case Prop::includePDB: return (m_properties.includePDB ? "true" : "false");
         case Prop::editAndContinue: return (m_properties.editAndContinue ? "true" : "false");
     }
-    propValue.pop_back();
+    if (!propValue.empty()) {
+        propValue.pop_back();
+    }
     return propValue;
 }
 
@@ -139,16 +139,18 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
     
     auto reader = new BinaryReader(modFile);
     reader->SetPosition(m_dataLoc);
-    auto tempData = reader->ReadBytes(reader->ReadInt32());
+    auto dataSize = reader->ReadInt32();
+    auto data = reader->ReadBytes(dataSize);
     std::vector<uint8_t> inflatedData;
-    if (decompress(tempData, inflatedData) != 0) {
+    auto inflatedDataSize = decompress(data, dataSize, inflatedData); 
+    if (inflatedDataSize < 0) {
         delete reader;
         fclose(modFile);
         return {};
     }
     delete reader;
     fclose(modFile);
-    modFile = fmemopen(&inflatedData[0], inflatedData.size(), "rb");
+    modFile = fmemopen(&inflatedData[0], inflatedDataSize, "rb");
     if (modFile == nullptr) {
         return {};
     }
@@ -281,10 +283,12 @@ int TmodFile::Read()
     
     // Decompress the mod data for reading.
     std::vector<uint8_t> inflatedData;
-    if (decompress(data, inflatedData) != 0) {
+    auto inflatedDataSize = decompress(data, dataSize, inflatedData);
+    if (inflatedDataSize < 0) {
         return -4;
     }
-    modFile = fmemopen(&inflatedData[0], inflatedData.size(), "rb");
+    
+    modFile = fmemopen(&inflatedData[0], inflatedDataSize, "rb");
     if (modFile == nullptr) {
         return -5;
     }

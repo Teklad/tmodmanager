@@ -43,6 +43,7 @@ class TmodFile {
         std::string GetProperty(Prop p);
     private:
         struct Properties {
+            Properties();
             std::vector<std::string> dllReferences;
             std::vector<std::string> modReferences;
             std::vector<std::string> weakReferences;
@@ -70,7 +71,7 @@ class TmodFile {
         uint8_t m_hash[20];
         uint8_t m_signature[256];
         long int m_dataLoc;
-        std::unordered_map<std::string, long unsigned int> m_files;
+        std::unordered_map<std::string, long int> m_files;
         Properties m_properties;
 };
 }

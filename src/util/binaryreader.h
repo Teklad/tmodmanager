@@ -14,9 +14,9 @@ class BinaryReader {
     public:
         BinaryReader(FILE *file);
         ~BinaryReader();
-        void SkipBytes(int count);
-        std::vector<uint8_t> ReadBytes(int count);
-        void SetPosition(int count);
+        void SkipBytes(long int count);
+        std::vector<uint8_t> ReadBytes(long int count);
+        void SetPosition(long int count);
         long int GetPosition();
         std::string ReadString();
         uint8_t ReadByte();

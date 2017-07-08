@@ -14,7 +14,7 @@ BinaryReader::~BinaryReader()
 {
 }
 
-std::vector<uint8_t> BinaryReader::ReadBytes(int count)
+std::vector<uint8_t> BinaryReader::ReadBytes(long int count)
 {
     std::vector<uint8_t> result(count, 0);
     int total = fread(&result[0], 1, count, m_file);
@@ -23,12 +23,12 @@ std::vector<uint8_t> BinaryReader::ReadBytes(int count)
     return result;
 }
 
-void BinaryReader::SetPosition(int count)
+void BinaryReader::SetPosition(long int count)
 {
     fseek(m_file, count, SEEK_SET);
 }
 
-void BinaryReader::SkipBytes(int count)
+void BinaryReader::SkipBytes(long int count)
 {
     fseek(m_file, count, SEEK_CUR);
 }
