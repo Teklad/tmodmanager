@@ -1,5 +1,6 @@
 #include <openssl/sha.h>
 
+#include <stdexcept>
 #include <stdio.h>
 #include <string.h>
 #include <zlib.h>
@@ -113,10 +114,7 @@ std::string TmodFile::GetProperty(Prop p)
         case Prop::includePDB: return (m_properties.includePDB ? "true" : "false");
         case Prop::editAndContinue: return (m_properties.editAndContinue ? "true" : "false");
     }
-    // If we made it here it was a list... remove the final comma.
-    if (propValue.back() == ',') {
-        propValue.pop_back();
-    }
+    propValue.pop_back();
     return propValue;
 }
 
