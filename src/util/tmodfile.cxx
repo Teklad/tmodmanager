@@ -1,5 +1,4 @@
 #include <openssl/sha.h>
-#include <string.h>
 #include <zlib.h>
 
 #include "tmodfile.h"
@@ -251,14 +250,17 @@ int TmodFile::Read()
         return -1;
     }
     auto reader = new BinaryReader(modFile);
-    if(memcmp(reader->ReadBytes(4).data(), "TMOD", 4) != 0) {
+    auto header = reader->ReadBytes(4);
+    if(!std::equal(header.begin(), header.end(), "TMOD")) {
         fclose(modFile);
         delete reader;
         return -2;
     }
     m_tModLoaderVersion = reader->ReadString();
-    memcpy(m_hash, reader->ReadBytes(20).data(), 20);
-    memcpy(m_signature, reader->ReadBytes(256).data(), 256);
+    std::vector<uint8_t> hash = reader->ReadBytes(20);
+    std::copy(hash.begin(), hash.end(), m_hash);
+    std::vector<uint8_t> signature = reader->ReadBytes(256);
+    std::copy(signature.begin(), signature.end(), m_signature);
     m_dataLoc = reader->GetPosition();
     auto dataSize = reader->ReadInt32();
     auto data = reader->ReadBytes(dataSize);
@@ -268,7 +270,7 @@ int TmodFile::Read()
     // Verify data integrity of the mod.
     uint8_t verifyHash[20];
     SHA1(&data[0], dataSize, verifyHash);
-    if (memcmp(m_hash, verifyHash, 20) != 0) {
+    if (!std::equal(m_hash, m_hash+20, verifyHash)) {
         return -3;
     }
 
