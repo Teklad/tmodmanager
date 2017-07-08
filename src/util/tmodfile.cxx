@@ -1,12 +1,11 @@
-#include "tmodfile.h"
-#include "binaryreader.h"
-
 #include <openssl/sha.h>
-#include <zlib.h>
-#include <iostream>
-#include <string.h>
+
 #include <stdio.h>
-#include <assert.h>
+#include <string.h>
+#include <zlib.h>
+
+#include "tmodfile.h"
+
 
 namespace TMM {
 
@@ -20,6 +19,7 @@ namespace TMM {
  *     0  - No error
  *     -1 - Inflate data error
  */
+
 static inline int decompress(std::vector<uint8_t>& in, std::vector<uint8_t> &out)
 {
     const size_t BUFSIZE = 1024;
@@ -37,7 +37,6 @@ static inline int decompress(std::vector<uint8_t>& in, std::vector<uint8_t> &out
     while (strm.avail_in != 0) {
         int res = inflate(&strm, Z_NO_FLUSH);
         if (res != Z_OK && res != Z_STREAM_END) {
-            std::cout << res << '\n';
             return -1;
         }
         if (strm.avail_out == 0) {
@@ -61,6 +60,21 @@ TmodFile::~TmodFile()
     
 }
 
+std::string TmodFile::GetProperty(const std::string &property)
+{
+    std::string propValue;
+    if (property == "dllReferences") {
+        for (auto i : m_properties.dllReferences) {
+            propValue.append(i);
+            propValue.push_back(',');
+        }
+    }
+    if (propValue.back() == ',') {
+        propValue.pop_back();
+    }
+    return propValue;
+}
+
 /**
  * @brief Decompresses the file's internal data and retrieves the
  *        specified data for the file name given.
@@ -72,32 +86,32 @@ TmodFile::~TmodFile()
 std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
 {
     if (m_files.count(fileName) == 0) {
-        return std::vector<uint8_t>();
+        return {};
     }
     
     FILE *modFile = fopen(m_path.c_str(), "rb");
     if (modFile == nullptr) {
-        return std::vector<uint8_t>();
+        return {};
     }
     
-    BinaryReader *reader = new BinaryReader(modFile);
+    auto reader = new BinaryReader(modFile);
     reader->SetPosition(m_dataLoc);
-    std::vector<uint8_t> tempData = reader->ReadBytes(reader->ReadInt32());
+    auto tempData = reader->ReadBytes(reader->ReadInt32());
     std::vector<uint8_t> inflatedData;
     if (decompress(tempData, inflatedData) != 0) {
         delete reader;
         fclose(modFile);
-        return std::vector<uint8_t>();
+        return {};
     }
     delete reader;
     fclose(modFile);
     modFile = fmemopen(&inflatedData[0], inflatedData.size(), "rb");
     if (modFile == nullptr) {
-        return std::vector<uint8_t>();
+        return {};
     }
     reader = new BinaryReader(modFile);
     reader->SetPosition(m_files.at(fileName));
-    std::vector<uint8_t> fileData = reader->ReadBytes(reader->ReadInt32());
+    auto fileData = reader->ReadBytes(reader->ReadInt32());
     delete reader;
     fclose(modFile);
     return fileData;
@@ -111,8 +125,7 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
 std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader *reader)
 {
     std::vector<std::string> li;
-    std::string item;
-    for (item = reader->ReadString(); item.length() > 0; item = reader->ReadString()) {
+    for (auto item = reader->ReadString(); item.length() > 0; item = reader->ReadString()) {
         li.push_back(item);
     }
     return li;
@@ -121,13 +134,17 @@ std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader *reader)
 /**
  * @brief Fills the property information for the tmod file.
  * @param reader
+ * Notes:
+ *     This will probably get moved to its own BuildProperties file in the future if I get time.
  */
 void TmodFile::FillProperties(TMM::BinaryReader *reader)
 {
-    for (std::string tag = reader->ReadString(); tag.length() > 0; tag = reader->ReadString()) {
+    for (auto tag = reader->ReadString(); tag.length() > 0; tag = reader->ReadString()) {
         if (tag == "dllReferences") {
             m_properties.dllReferences = ReadList(reader);
         }
+        //TODO: tModLoader handles modReferences a bit differently... should probably try to
+        //      conform just to be safe later.
         if (tag == "modReferences") {
             m_properties.modReferences = ReadList(reader);
         }
@@ -193,11 +210,11 @@ void TmodFile::FillProperties(TMM::BinaryReader *reader)
  */
 int TmodFile::Read()
 {
-    FILE *modFile = fopen(m_path.c_str(), "rb");
+    auto modFile = fopen(m_path.c_str(), "rb");
     if (modFile == nullptr) {
         return -1;
     }
-    BinaryReader *reader = new BinaryReader(modFile);
+    auto reader = new BinaryReader(modFile);
     if(memcmp(reader->ReadBytes(4).data(), "TMOD", 4) != 0) {
         fclose(modFile);
         delete reader;
@@ -207,9 +224,8 @@ int TmodFile::Read()
     memcpy(m_hash, reader->ReadBytes(20).data(), 20);
     memcpy(m_signature, reader->ReadBytes(256).data(), 256);
     m_dataLoc = reader->GetPosition();
-    std::vector<uint8_t> data;
-    long unsigned int dataSize = reader->ReadInt32();
-    data = reader->ReadBytes(dataSize);
+    auto dataSize = reader->ReadInt32();
+    auto data = reader->ReadBytes(dataSize);
     delete reader;
     fclose(modFile);
     
@@ -232,13 +248,11 @@ int TmodFile::Read()
     reader = new BinaryReader(modFile);
     m_name = reader->ReadString();
     m_version = reader->ReadString();
-    int fileCount = reader->ReadInt32();
-    std::string fileName;
-    long unsigned int fileDataLoc;
+    auto fileCount = reader->ReadInt32();
 
-    for (int i = 0; i < fileCount; ++i) {
-        fileName = reader->ReadString();
-        fileDataLoc = reader->GetPosition();
+    for (auto i = 0; i < fileCount; ++i) {
+        auto fileName = reader->ReadString();
+        auto fileDataLoc = reader->GetPosition();
         if (fileName == "Info") {
             reader->ReadInt32();
             FillProperties(reader);

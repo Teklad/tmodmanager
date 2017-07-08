@@ -1,7 +1,7 @@
-#include "binaryreader.h"
-#include <stdio.h>
 #include <assert.h>
-#include <string.h>
+
+#include "binaryreader.h"
+
 namespace TMM {
     
 BinaryReader::BinaryReader(FILE *file)
@@ -18,6 +18,7 @@ std::vector<uint8_t> BinaryReader::ReadBytes(int count)
 {
     std::vector<uint8_t> result(count, 0);
     int total = fread(&result[0], 1, count, m_file);
+    // If this check fails we've royally screwed up anyhow.
     assert(total == count);
     return result;
 }
@@ -41,14 +42,11 @@ std::string BinaryReader::ReadString()
 {
     int stringLength = Read7BitEncodedInt();
     if (stringLength <= 0) {
-        return std::string();
+        return {};
     }
     char buffer[stringLength+1];
     fread(buffer, 1, stringLength, m_file);
     buffer[stringLength] = 0;
-    if (strlen(buffer) == 0) {
-        return std::string("");
-    }
     return std::string(buffer);
 }
 

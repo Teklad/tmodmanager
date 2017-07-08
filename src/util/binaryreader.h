@@ -1,10 +1,15 @@
 #ifndef  _TMMUTIL_BINARYREADER_H_
 #define  _TMMUTIL_BINARYREADER_H_
 
-#include <fstream>
+#include <stdint.h>
+#include <string>
 #include <vector>
 
 namespace TMM {
+/**
+ * @brief Partial reimplementation of C#'s BinaryReader class in order to properly read tmod
+ *        file data.
+ */
 class BinaryReader {
     public:
         BinaryReader(FILE *file);
@@ -18,7 +23,6 @@ class BinaryReader {
         int ReadInt32();
     private:
         FILE *m_file = nullptr;
-        uint8_t *m_buffer;
         int Read7BitEncodedInt();
 };
 }

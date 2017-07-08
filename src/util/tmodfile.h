@@ -1,15 +1,16 @@
 #ifndef  _TMMUTIL_TMODFILE_H_
 #define  _TMMUTIL_TMODFILE_H_
 
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
+
 #include "binaryreader.h"
 
 namespace TMM {
 /**
  * @brief This class reads and stores tmod file information for access in the UI.
- *        Most of the functions in here have been converted from their C# counterparts from
+ *        Most of the functions in here have been borrowed from their C# counterparts from
  *        tModLoader.
  */
 class TmodFile {
@@ -20,26 +21,26 @@ class TmodFile {
         std::vector<uint8_t> GetFileData(const std::string &fileName);
         const std::string &GetName();
         const std::string &GetVersion();
+        std::string GetProperty(const std::string &property);
     private:
         struct Properties {
-            public:
-                std::vector<std::string> dllReferences;
-                std::vector<std::string> modReferences;
-                std::vector<std::string> weakReferences;
-                std::vector<std::string> sortAfter;
-                std::vector<std::string> sortBefore;
-                std::string author;
-                std::string version;
-                std::string displayName;
-                std::string homepage;
-                std::string description;
-                bool noCompile = false;
-                bool hideCode = true;
-                bool hideResources = true;
-                bool includeSource = false;
-                bool includePDB = false;
-                bool editAndContinue = false;
-                uint8_t side;
+            std::vector<std::string> dllReferences;
+            std::vector<std::string> modReferences;
+            std::vector<std::string> weakReferences;
+            std::vector<std::string> sortAfter;
+            std::vector<std::string> sortBefore;
+            std::string author;
+            std::string version;
+            std::string displayName;
+            std::string homepage;
+            std::string description;
+            bool noCompile = false;
+            bool hideCode = true;
+            bool hideResources = true;
+            bool includeSource = false;
+            bool includePDB = false;
+            bool editAndContinue = false;
+            uint8_t side;
         };
         void FillProperties(BinaryReader *reader);
         std::vector<std::string> ReadList(BinaryReader *reader);
