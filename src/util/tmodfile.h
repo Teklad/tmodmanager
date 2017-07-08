@@ -15,13 +15,32 @@ namespace TMM {
  */
 class TmodFile {
     public:
+        enum class Prop {
+            dllReferences,
+            modReferences,
+            weakReferences,
+            sortAfter,
+            sortBefore,
+            author,
+            version,
+            displayName,
+            homepage,
+            description,
+            noCompile,
+            hideCode,
+            hideResources,
+            includeSource,
+            includePDB,
+            editAndContinue,
+            side
+        };
         TmodFile(const std::string &path);
         ~TmodFile();
         int Read();
         std::vector<uint8_t> GetFileData(const std::string &fileName);
         const std::string &GetName();
         const std::string &GetVersion();
-        std::string GetProperty(const std::string &property);
+        std::string GetProperty(Prop p);
     private:
         struct Properties {
             std::vector<std::string> dllReferences;
@@ -40,7 +59,7 @@ class TmodFile {
             bool includeSource = false;
             bool includePDB = false;
             bool editAndContinue = false;
-            uint8_t side;
+            int side;
         };
         void FillProperties(BinaryReader *reader);
         std::vector<std::string> ReadList(BinaryReader *reader);

@@ -57,70 +57,61 @@ TmodFile::TmodFile(const std::string &path)
 
 TmodFile::~TmodFile()
 {
-    
 }
+
 /**
  * @brief Gets the requested property from the internal property class and returns it as a string
  * @param property
  * @return string
- * Notes:
- *     This is a pretty ugly way to do this... Should probably specify a string list somewhere
- *     to avoid typo issues.
  */
-std::string TmodFile::GetProperty(const std::string &property)
+std::string TmodFile::GetProperty(Prop p)
 {
     std::string propValue;
-    if (property == "dllReferences") {
-        for (const auto& i : m_properties.dllReferences) {
-            propValue.append(i).push_back(',');
-        }
-    }else if (property == "modReferences") {
-        for (const auto& i : m_properties.modReferences) {
-            propValue.append(i).push_back(',');
-        }
-    }else if (property == "weakReferences") {
-        for (const auto& i : m_properties.weakReferences) {
-            propValue.append(i).push_back(',');
-        }
-    }else if (property == "sortAfter") {
-        for (const auto& i : m_properties.sortAfter) {
-            propValue.append(i).push_back(',');
-        }
-    }else if (property == "sortBefore") {
-        for (const auto& i : m_properties.sortBefore) {
-            propValue.append(i).push_back(',');
-        }
-    }else if (property == "author") {
-        return m_properties.author;
-    }else if (property == "version") {
-        return m_properties.version;
-    }else if (property == "displayName") {
-        return m_properties.displayName;
-    }else if (property == "homepage") {
-        return m_properties.homepage;
-    }else if (property == "description") {
-        return m_properties.description;
-    }else if (property == "noCompile") {
-        return (m_properties.noCompile == true ? "true" : "false");
-    }else if (property == "hideCode") {
-        return (m_properties.hideCode == true ? "true" : "false");
-    }else if (property == "hideResources") {
-        return (m_properties.hideResources == true ? "true" : "false");
-    }else if (property == "includeSource") {
-        return (m_properties.includeSource == true ? "true" : "false");
-    }else if (property == "includePDB") {
-        return (m_properties.includePDB == true ? "true" : "false");
-    }else if (property == "editAndContinue") {
-        return (m_properties.editAndContinue == true ? "true" : "false");
-    }else if (property == "side") {
-        // The "side" property is an enum in tModLoader... from what I can tell enums default to 0
-        // for the first member in C#
-        switch(m_properties.side) {
-            case 0: return "Both";
-            case 1: return "Client";
-            case 2: return "Server";
-            case 3: return "NoSync";
-        }
+    switch(p) {
+        case Prop::dllReferences:
+            for (const auto& i : m_properties.dllReferences) {
+                propValue.append(i).push_back(',');
+            }
+            break;
+        case Prop::modReferences:
+            for (const auto& i : m_properties.modReferences) {
+                propValue.append(i).push_back(',');
+            }
+            break;
+        case Prop::weakReferences:
+            for (const auto& i : m_properties.weakReferences) {
+                propValue.append(i).push_back(',');
+            }
+            break;
+        case Prop::sortAfter:
+            for (const auto& i : m_properties.sortAfter) {
+                propValue.append(i).push_back(',');
+            }
+            break;
+        case Prop::sortBefore:
+            for (const auto& i : m_properties.sortBefore) {
+                propValue.append(i).push_back(',');
+            }
+            break;
+        case Prop::side:
+            switch (m_properties.side) {
+                case 0: return "Both";
+                case 1: return "Client";
+                case 2: return "Server";
+                case 3: return "NoSync";
+            }
+            break;
+        case Prop::author: return m_properties.author;
+        case Prop::version: return m_properties.version;
+        case Prop::displayName: return m_properties.displayName;
+        case Prop::homepage: return m_properties.homepage;
+        case Prop::description: return m_properties.description;
+        case Prop::noCompile: return (m_properties.noCompile ? "true" : "false");
+        case Prop::hideCode: return (m_properties.hideCode ? "true" : "false");
+        case Prop::hideResources: return (m_properties.hideResources ? "true" : "false");
+        case Prop::includeSource: return (m_properties.includeSource ? "true" : "false");
+        case Prop::includePDB: return (m_properties.includePDB ? "true" : "false");
+        case Prop::editAndContinue: return (m_properties.editAndContinue ? "true" : "false");
     }
     // If we made it here it was a list... remove the final comma.
     if (propValue.back() == ',') {
