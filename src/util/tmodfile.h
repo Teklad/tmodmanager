@@ -43,7 +43,6 @@ class TmodFile {
         std::string GetProperty(Prop p);
     private:
         struct Properties {
-            Properties();
             std::vector<std::string> dllReferences;
             std::vector<std::string> modReferences;
             std::vector<std::string> weakReferences;

@@ -1,8 +1,4 @@
 #include <openssl/sha.h>
-
-#include <iostream>
-#include <stdexcept>
-#include <stdio.h>
 #include <string.h>
 #include <zlib.h>
 
@@ -22,7 +18,7 @@ namespace TMM {
  *     -1 - Inflate data error
  */
 
-static inline long int decompress(std::vector<uint8_t>& in, 
+static inline long int decompress(std::vector<uint8_t>& in,
     long int inSize, std::vector<uint8_t> &out)
 {
     auto ret = Z_OK;
@@ -51,11 +47,6 @@ TmodFile::TmodFile(const std::string &path)
 
 TmodFile::~TmodFile()
 {
-}
-
-TmodFile::Properties::Properties()
-{
-    modReferences.clear();
 }
 
 /**
@@ -131,18 +122,18 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
     if (m_files.count(fileName) == 0) {
         return {};
     }
-    
+
     FILE *modFile = fopen(m_path.c_str(), "rb");
     if (modFile == nullptr) {
         return {};
     }
-    
+
     auto reader = new BinaryReader(modFile);
     reader->SetPosition(m_dataLoc);
     auto dataSize = reader->ReadInt32();
     auto data = reader->ReadBytes(dataSize);
     std::vector<uint8_t> inflatedData;
-    auto inflatedDataSize = decompress(data, dataSize, inflatedData); 
+    auto inflatedDataSize = decompress(data, dataSize, inflatedData);
     if (inflatedDataSize < 0) {
         delete reader;
         fclose(modFile);
@@ -273,21 +264,21 @@ int TmodFile::Read()
     auto data = reader->ReadBytes(dataSize);
     delete reader;
     fclose(modFile);
-    
+
     // Verify data integrity of the mod.
     uint8_t verifyHash[20];
     SHA1(&data[0], dataSize, verifyHash);
     if (memcmp(m_hash, verifyHash, 20) != 0) {
         return -3;
     }
-    
+
     // Decompress the mod data for reading.
     std::vector<uint8_t> inflatedData;
     auto inflatedDataSize = decompress(data, dataSize, inflatedData);
     if (inflatedDataSize < 0) {
         return -4;
     }
-    
+
     modFile = fmemopen(&inflatedData[0], inflatedDataSize, "rb");
     if (modFile == nullptr) {
         return -5;
@@ -296,7 +287,6 @@ int TmodFile::Read()
     m_name = reader->ReadString();
     m_version = reader->ReadString();
     auto fileCount = reader->ReadInt32();
-
     for (auto i = 0; i < fileCount; ++i) {
         auto fileName = reader->ReadString();
         auto fileDataLoc = reader->GetPosition();
@@ -308,7 +298,6 @@ int TmodFile::Read()
         }
         m_files.emplace(std::make_pair(std::move(fileName), std::move(fileDataLoc)));
     }
-    
     delete reader;
     fclose(modFile);
     return 0;
