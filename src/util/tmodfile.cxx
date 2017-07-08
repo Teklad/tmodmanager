@@ -3,7 +3,6 @@
 
 #include "tmodfile.h"
 
-
 namespace TMM {
 
 /**
@@ -17,22 +16,21 @@ namespace TMM {
  *     -1 - Inflate data error
  */
 
-static inline long int decompress(std::vector<uint8_t>& in,
-    long int inSize, std::vector<uint8_t> &out)
+static inline long int decompress(std::vector<uint8_t>& in, std::vector<uint8_t> &out)
 {
     auto ret = Z_OK;
-    const size_t BUFSIZE = 1024 * 32;
+    const size_t BUFSIZE = 1024 * 64;
     uint8_t chunk[BUFSIZE];
     z_stream zs = {Z_NULL};
-    zs.next_in = &in[0];
-    zs.avail_in = inSize;
+    zs.next_in = in.data();
+    zs.avail_in = in.size();
     inflateInit2(&zs, -15);
     do {
         zs.next_out = chunk;
         zs.avail_out = BUFSIZE;
         ret = inflate(&zs, Z_NO_FLUSH);
         if (zs.avail_out < BUFSIZE) {
-            out.insert(out.end(), chunk, chunk + BUFSIZE);
+            out.insert(out.end(), chunk, chunk + BUFSIZE - zs.avail_out);
         }
     } while (ret == Z_OK);
     inflateEnd(&zs);
@@ -129,18 +127,16 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
 
     auto reader = new BinaryReader(modFile);
     reader->SetPosition(m_dataLoc);
-    auto dataSize = reader->ReadInt32();
-    auto data = reader->ReadBytes(dataSize);
-    std::vector<uint8_t> inflatedData;
-    auto inflatedDataSize = decompress(data, dataSize, inflatedData);
-    if (inflatedDataSize < 0) {
+    auto data = reader->ReadBytes(reader->ReadInt32());
+    std::vector<uint8_t> inflated;
+    if (decompress(data, inflated) < 0) {
         delete reader;
         fclose(modFile);
         return {};
     }
     delete reader;
     fclose(modFile);
-    modFile = fmemopen(&inflatedData[0], inflatedDataSize, "rb");
+    modFile = fmemopen(inflated.data(), inflated.size(), "rb");
     if (modFile == nullptr) {
         return {};
     }
@@ -262,26 +258,24 @@ int TmodFile::Read()
     std::vector<uint8_t> signature = reader->ReadBytes(256);
     std::copy(signature.begin(), signature.end(), m_signature);
     m_dataLoc = reader->GetPosition();
-    auto dataSize = reader->ReadInt32();
-    auto data = reader->ReadBytes(dataSize);
+    auto data = reader->ReadBytes(reader->ReadInt32());
     delete reader;
     fclose(modFile);
 
     // Verify data integrity of the mod.
     uint8_t verifyHash[20];
-    SHA1(&data[0], dataSize, verifyHash);
+    SHA1(data.data(), data.size(), verifyHash);
     if (!std::equal(m_hash, m_hash+20, verifyHash)) {
         return -3;
     }
 
     // Decompress the mod data for reading.
-    std::vector<uint8_t> inflatedData;
-    auto inflatedDataSize = decompress(data, dataSize, inflatedData);
-    if (inflatedDataSize < 0) {
+    std::vector<uint8_t> inflated;
+    if (decompress(data, inflated) < 0) {
         return -4;
     }
 
-    modFile = fmemopen(&inflatedData[0], inflatedDataSize, "rb");
+    modFile = fmemopen(inflated.data(), inflated.size(), "rb");
     if (modFile == nullptr) {
         return -5;
     }
