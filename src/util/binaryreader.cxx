@@ -1,6 +1,7 @@
 #include "binaryreader.h"
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 namespace TMM {
     
 BinaryReader::BinaryReader(FILE *file)
@@ -45,6 +46,9 @@ std::string BinaryReader::ReadString()
     char buffer[stringLength+1];
     fread(buffer, 1, stringLength, m_file);
     buffer[stringLength] = 0;
+    if (strlen(buffer) == 0) {
+        return std::string("");
+    }
     return std::string(buffer);
 }
 
