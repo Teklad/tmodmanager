@@ -25,8 +25,11 @@ The steps follow the basic principles of cmake.
 
 #### Linux
 cd into the project directory
+
 mkdir build && cd build
+
 cmake ../ && make
+
 In order to test run ./src/tmm
 
 ### Final Notes
