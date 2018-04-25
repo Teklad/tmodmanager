@@ -38,8 +38,8 @@ class TmodFile {
         ~TmodFile();
         int Read();
         std::vector<uint8_t> GetFileData(const std::string &fileName);
-        const std::string &GetName();
-        const std::string &GetVersion();
+        std::string GetName();
+        std::string GetVersion();
         std::string GetProperty(Prop p);
     private:
         struct Properties {

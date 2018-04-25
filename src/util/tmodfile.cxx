@@ -299,12 +299,12 @@ int TmodFile::Read()
     return 0;
 }
 
-const std::string &TmodFile::GetName()
+std::string TmodFile::GetName()
 {
     return m_name;
 }
 
-const std::string &TmodFile::GetVersion()
+std::string TmodFile::GetVersion()
 {
     return m_version;
 }
