@@ -1,0 +1,3 @@
+[submodule "src/external/minini"]
+	path = src/external/minini
+	url = https://github.com/compuphase/minIni.git
