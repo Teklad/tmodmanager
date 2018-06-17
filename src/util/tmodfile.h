@@ -38,6 +38,7 @@ class TmodFile {
         ~TmodFile();
         int Read();
         std::vector<uint8_t> GetFileData(const std::string &fileName);
+        std::vector<std::string> GetFiles();
         std::string GetName();
         std::string GetVersion();
         std::string GetProperty(Prop p);
@@ -61,14 +62,15 @@ class TmodFile {
             bool editAndContinue = false;
             int side;
         };
-        void FillProperties(BinaryReader *reader);
-        std::vector<std::string> ReadList(BinaryReader *reader);
+        void FillProperties(BinaryReader &reader);
+        std::vector<std::string> ReadList(BinaryReader &reader);
         std::string m_name;
         std::string m_version;
         std::string m_path;
         std::string m_tModLoaderVersion;
         uint8_t m_hash[20];
         uint8_t m_signature[256];
+        std::vector<uint8_t> m_inflatedData;
         long int m_dataLoc;
         std::unordered_map<std::string, long int> m_files;
         Properties m_properties;

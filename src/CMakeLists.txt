@@ -1,13 +1,27 @@
+add_subdirectory(external)
+
 find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-add_executable(tmm 
-    main.cxx 
-    util/binaryreader.cxx 
+add_executable(tmodmanager
+    main.cxx
+    util/binaryreader.cxx
     util/tmodfile.cxx
     util/appdata.cxx
-    )
+    util/filesystem.cxx
+)
 
-set_property(TARGET tmm PROPERTY CXX_STANDARD 11)
+set_property(TARGET tmodmanager PROPERTY CXX_STANDARD 11)
 
-target_link_libraries(tmm ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES})
+include_directories(tmodmanager PRIVATE
+    ${OPENSSL_INCLUDE_DIR}
+    ${ZLIB_INCLUDE_DIRS}
+)
+
+target_link_libraries(tmodmanager
+    ${OPENSSL_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    MinINI
+)
+
+install(TARGETS tmodmanager DESTINATION bin)

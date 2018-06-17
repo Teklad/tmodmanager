@@ -6,12 +6,34 @@ namespace TMM {
     
 BinaryReader::BinaryReader(FILE *file)
 {
-    m_file = file;
-    assert(m_file != nullptr);
+    SetFile(file);
+}
+
+BinaryReader::BinaryReader(const std::string &fpath)
+{
+    SetFile(fpath);
 }
 
 BinaryReader::~BinaryReader()
 {
+    if (m_file != nullptr) {
+        fclose(m_file);
+    }
+}
+
+bool BinaryReader::SetFile(FILE *file)
+{
+    if (m_file != nullptr) {
+        fclose(m_file);
+    }
+    m_file = file;
+    return IsValid();
+}
+
+bool BinaryReader::SetFile(const std::string &fpath)
+{
+    FILE *nfile = fopen(fpath.c_str(), "rb");
+    return SetFile(nfile);
 }
 
 std::vector<uint8_t> BinaryReader::ReadBytes(long int count)
@@ -61,7 +83,7 @@ int BinaryReader::ReadInt32()
 {
     uint8_t b[4];
     fread(b, 1, 4, m_file);
-    return (int)(b[0] | b[1] << 8 | b[2] << 16 | b[3] << 24);
+    return static_cast<int>(b[0] | b[1] << 8 | b[2] << 16 | b[3] << 24);
 }
 
 int BinaryReader::Read7BitEncodedInt()

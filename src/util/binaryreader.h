@@ -13,7 +13,11 @@ namespace TMM {
 class BinaryReader {
     public:
         BinaryReader(FILE *file);
+        BinaryReader(const std::string &fpath);
         ~BinaryReader();
+        bool SetFile(FILE *file);
+        bool SetFile(const std::string &fpath);
+        bool IsValid() { return (m_file != nullptr); }
         void SkipBytes(long int count);
         std::vector<uint8_t> ReadBytes(long int count);
         void SetPosition(long int count);

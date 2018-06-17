@@ -2,14 +2,16 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#ifdef linux
+#include <dirent.h>
 #include <pwd.h>
+#include <string.h>
 #include <unistd.h>
-#endif
+#include <iostream>
 
 std::string AppData::GetUserDirectory()
 {
 #ifdef _WIN32
+
 #else
     char *homedir = getenv("HOME");
     if (homedir == NULL) {
@@ -38,4 +40,26 @@ std::string AppData::GetModDirectory()
     homedir.append("/.local/share/Terraria/ModLoader/Mods");
 #endif
     return homedir;
+}
+
+std::vector<std::string> AppData::GetModList(const std::string &directory)
+{
+    std::vector<std::string> mods;
+    DIR *dir;
+    struct dirent *ent;
+
+    dir = opendir(directory.c_str());
+    if (dir == NULL) {
+        return mods;
+    }
+
+    while ((ent = readdir(dir)) != NULL) {
+        char *ext_start = strrchr(ent->d_name, '.');
+        if (ext_start != NULL && strcmp(".tmod", ext_start) == 0) {
+            mods.push_back(ent->d_name);
+        }
+    }
+
+    closedir(dir);
+    return mods;
 }

@@ -1,7 +1,7 @@
+#include "tmodfile.h"
+
 #include <openssl/sha.h>
 #include <zlib.h>
-
-#include "tmodfile.h"
 
 namespace TMM {
 
@@ -88,17 +88,28 @@ std::string TmodFile::GetProperty(Prop p)
                 case 3: return "NoSync";
             }
             break;
-        case Prop::author: return m_properties.author;
-        case Prop::version: return m_properties.version;
-        case Prop::displayName: return m_properties.displayName;
-        case Prop::homepage: return m_properties.homepage;
-        case Prop::description: return m_properties.description;
-        case Prop::noCompile: return (m_properties.noCompile ? "true" : "false");
-        case Prop::hideCode: return (m_properties.hideCode ? "true" : "false");
-        case Prop::hideResources: return (m_properties.hideResources ? "true" : "false");
-        case Prop::includeSource: return (m_properties.includeSource ? "true" : "false");
-        case Prop::includePDB: return (m_properties.includePDB ? "true" : "false");
-        case Prop::editAndContinue: return (m_properties.editAndContinue ? "true" : "false");
+        case Prop::author:
+            return m_properties.author;
+        case Prop::version:
+            return m_properties.version;
+        case Prop::displayName:
+            return m_properties.displayName;
+        case Prop::homepage:
+            return m_properties.homepage;
+        case Prop::description:
+            return m_properties.description;
+        case Prop::noCompile:
+            return (m_properties.noCompile ? "true" : "false");
+        case Prop::hideCode:
+            return (m_properties.hideCode ? "true" : "false");
+        case Prop::hideResources:
+            return (m_properties.hideResources ? "true" : "false");
+        case Prop::includeSource:
+            return (m_properties.includeSource ? "true" : "false");
+        case Prop::includePDB:
+            return (m_properties.includePDB ? "true" : "false");
+        case Prop::editAndContinue:
+            return (m_properties.editAndContinue ? "true" : "false");
     }
     if (!propValue.empty()) {
         propValue.pop_back();
@@ -120,32 +131,24 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
         return {};
     }
 
-    FILE *modFile = fopen(m_path.c_str(), "rb");
-    if (modFile == nullptr) {
-        return {};
+    if (m_inflatedData.empty()) {
+        BinaryReader reader(m_path);
+        if (!reader.IsValid()) {
+            return {};
+        }
+        reader.SetPosition(m_dataLoc);
+        std::vector<uint8_t> data = reader.ReadBytes(reader.ReadInt32());
+        if (decompress(data, m_inflatedData) < 0) {
+            return {};
+        }
     }
 
-    auto reader = new BinaryReader(modFile);
-    reader->SetPosition(m_dataLoc);
-    auto data = reader->ReadBytes(reader->ReadInt32());
-    std::vector<uint8_t> inflated;
-    if (decompress(data, inflated) < 0) {
-        delete reader;
-        fclose(modFile);
+    BinaryReader reader(fmemopen(m_inflatedData.data(), m_inflatedData.size(), "rb"));
+    if (!reader.IsValid()) {
         return {};
     }
-    delete reader;
-    fclose(modFile);
-    modFile = fmemopen(inflated.data(), inflated.size(), "rb");
-    if (modFile == nullptr) {
-        return {};
-    }
-    reader = new BinaryReader(modFile);
-    reader->SetPosition(m_files.at(fileName));
-    auto fileData = reader->ReadBytes(reader->ReadInt32());
-    delete reader;
-    fclose(modFile);
-    return fileData;
+    reader.SetPosition(m_files.at(fileName));
+    return reader.ReadBytes(reader.ReadInt32());
 }
 
 /**
@@ -153,10 +156,10 @@ std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
  * @param reader
  * @return std::vector<std::string>
  */
-std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader *reader)
+std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader &reader)
 {
     std::vector<std::string> li;
-    for (auto item = reader->ReadString(); item.length() > 0; item = reader->ReadString()) {
+    for (auto item = reader.ReadString(); item.length() > 0; item = reader.ReadString()) {
         li.push_back(item);
     }
     return li;
@@ -168,14 +171,14 @@ std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader *reader)
  * Notes:
  *     This will probably get moved to its own BuildProperties file in the future if I get time.
  */
-void TmodFile::FillProperties(TMM::BinaryReader *reader)
+void TmodFile::FillProperties(TMM::BinaryReader &reader)
 {
-    for (auto tag = reader->ReadString(); tag.length() > 0; tag = reader->ReadString()) {
+    for (auto tag = reader.ReadString(); tag.length() > 0; tag = reader.ReadString()) {
         if (tag == "dllReferences") {
             m_properties.dllReferences = ReadList(reader);
         }
-        //TODO: tModLoader handles modReferences a bit differently... should probably try to
-        //      conform just to be safe later.
+        //TODO: tModLoader handles modReferences a bit differently.
+        // Should probably try to conform just to be safe later.
         if (tag == "modReferences") {
             m_properties.modReferences = ReadList(reader);
         }
@@ -189,19 +192,19 @@ void TmodFile::FillProperties(TMM::BinaryReader *reader)
             m_properties.sortBefore = ReadList(reader);
         }
         if (tag == "author") {
-            m_properties.author = reader->ReadString();
+            m_properties.author = reader.ReadString();
         }
         if (tag == "version") {
-            m_properties.version = reader->ReadString();
+            m_properties.version = reader.ReadString();
         }
         if (tag == "displayName") {
-            m_properties.displayName = reader->ReadString();
+            m_properties.displayName = reader.ReadString();
         }
         if (tag == "homepage") {
-            m_properties.homepage = reader->ReadString();
+            m_properties.homepage = reader.ReadString();
         }
         if (tag == "description") {
-            m_properties.description = reader->ReadString();
+            m_properties.description = reader.ReadString();
         }
         if (tag == "noCompile") {
             m_properties.noCompile = true;
@@ -222,7 +225,7 @@ void TmodFile::FillProperties(TMM::BinaryReader *reader)
             m_properties.editAndContinue = true;
         }
         if (tag == "side") {
-            m_properties.side = reader->ReadByte();
+            m_properties.side = reader.ReadByte();
         }
     }
 }
@@ -241,61 +244,53 @@ void TmodFile::FillProperties(TMM::BinaryReader *reader)
  */
 int TmodFile::Read()
 {
-    auto modFile = fopen(m_path.c_str(), "rb");
-    if (modFile == nullptr) {
+    BinaryReader reader(m_path);
+    if (!reader.IsValid()) {
         return -1;
     }
-    auto reader = new BinaryReader(modFile);
-    auto header = reader->ReadBytes(4);
+    std::vector<uint8_t> header = reader.ReadBytes(4);
     if(!std::equal(header.begin(), header.end(), "TMOD")) {
-        fclose(modFile);
-        delete reader;
         return -2;
     }
-    m_tModLoaderVersion = reader->ReadString();
-    std::vector<uint8_t> hash = reader->ReadBytes(20);
+    m_tModLoaderVersion = reader.ReadString();
+    std::vector<uint8_t> hash = reader.ReadBytes(20);
     std::copy(hash.begin(), hash.end(), m_hash);
-    std::vector<uint8_t> signature = reader->ReadBytes(256);
+    std::vector<uint8_t> signature = reader.ReadBytes(256);
     std::copy(signature.begin(), signature.end(), m_signature);
-    m_dataLoc = reader->GetPosition();
-    auto data = reader->ReadBytes(reader->ReadInt32());
-    delete reader;
-    fclose(modFile);
+    m_dataLoc = reader.GetPosition();
+    std::vector<uint8_t> data = reader.ReadBytes(reader.ReadInt32());
 
     // Verify data integrity of the mod.
-    uint8_t verifyHash[20];
-    SHA1(data.data(), data.size(), verifyHash);
-    if (!std::equal(m_hash, m_hash+20, verifyHash)) {
+    uint8_t checksum[20];
+    SHA1(data.data(), data.size(), checksum);
+    if (!std::equal(m_hash, m_hash+20, checksum)) {
         return -3;
     }
 
     // Decompress the mod data for reading.
     std::vector<uint8_t> inflated;
+    inflated.reserve(data.size() * 4);
     if (decompress(data, inflated) < 0) {
         return -4;
     }
 
-    modFile = fmemopen(inflated.data(), inflated.size(), "rb");
-    if (modFile == nullptr) {
+    if (!reader.SetFile(fmemopen(inflated.data(), inflated.size(), "rb"))) {
         return -5;
     }
-    reader = new BinaryReader(modFile);
-    m_name = reader->ReadString();
-    m_version = reader->ReadString();
-    auto fileCount = reader->ReadInt32();
+    m_name = reader.ReadString();
+    m_version = reader.ReadString();
+    int fileCount = reader.ReadInt32();
     for (auto i = 0; i < fileCount; ++i) {
-        auto fileName = reader->ReadString();
-        auto fileDataLoc = reader->GetPosition();
+        std::string fileName = reader.ReadString();
+        int fileDataLoc = reader.GetPosition();
         if (fileName == "Info") {
-            reader->ReadInt32();
+            reader.ReadInt32();
             FillProperties(reader);
         }else {
-            reader->SkipBytes(reader->ReadInt32());
+            reader.SkipBytes(reader.ReadInt32());
         }
         m_files.emplace(std::make_pair(std::move(fileName), std::move(fileDataLoc)));
     }
-    delete reader;
-    fclose(modFile);
     return 0;
 }
 
@@ -307,6 +302,16 @@ std::string TmodFile::GetName()
 std::string TmodFile::GetVersion()
 {
     return m_version;
+}
+
+std::vector<std::string> TmodFile::GetFiles()
+{
+    std::vector<std::string> keys;
+    keys.reserve(m_files.size());
+    for (auto k : m_files) {
+        keys.push_back(k.first);
+    }
+    return keys;
 }
 
 }
