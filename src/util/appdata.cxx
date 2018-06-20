@@ -11,7 +11,7 @@
 std::string AppData::GetUserDirectory()
 {
 #ifdef _WIN32
-
+//TODO: Windows implementation of this
 #else
     char *homedir = getenv("HOME");
     if (homedir == NULL) {
