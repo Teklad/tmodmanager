@@ -1,5 +1,4 @@
 #include "appdata.h"
-#include "steamconfig.h"
 
 #include <QDir>
 #include <QStandardPaths>

@@ -33,10 +33,14 @@ bool BinaryReader::SetFile(FILE *file)
 bool BinaryReader::SetFile(const std::string &fpath)
 {
 	FILE *nfile;
+#ifdef _WIN32
     errno_t success = fopen_s(&nfile, fpath.c_str(), "rb");
 	if (success != 0) {
 		return false;
 	}
+#else
+    nfile = fopen(fpath.c_str(), "rb");
+#endif
     return SetFile(nfile);
 }
 
