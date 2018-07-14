@@ -6,7 +6,7 @@
 
 QString AppData::GetAppDataDirectory()
 {
-	QString gamepath = QStandardPaths::locate(QStandardPaths::AppDataLocation, "Terraria");
+    QString gamepath = QStandardPaths::locate(QStandardPaths::AppDataLocation, "Terraria", QStandardPaths::LocateDirectory);
 	if (gamepath.isEmpty()) {
 		gamepath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
 		if (gamepath.isEmpty()) {
@@ -16,7 +16,6 @@ QString AppData::GetAppDataDirectory()
 		if (!savedir.cd("My Games") || !savedir.cd("Terraria")) {
 			return {};
 		}
-		qDebug() << savedir.absolutePath();
 		gamepath = savedir.absolutePath();
 	}
 	return QDir::toNativeSeparators(gamepath);
