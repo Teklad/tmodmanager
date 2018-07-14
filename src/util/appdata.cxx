@@ -1,65 +1,48 @@
 #include "appdata.h"
-#include <sys/types.h>
-#include <sys/stat.h>
+#include "steamconfig.h"
 
-#include <dirent.h>
-#include <pwd.h>
-#include <string.h>
-#include <unistd.h>
-#include <iostream>
+#include <QDir>
+#include <QStandardPaths>
+#include <QDebug>
 
-std::string AppData::GetUserDirectory()
+QString AppData::GetAppDataDirectory()
 {
-#ifdef _WIN32
-//TODO: Windows implementation of this
-#else
-    char *homedir = getenv("HOME");
-    if (homedir == NULL) {
-        struct passwd *pw = getpwuid(getuid());
-        homedir = pw->pw_dir;
-    }
-#endif
-    return std::string(homedir);
+	QString gamepath = QStandardPaths::locate(QStandardPaths::AppDataLocation, "Terraria");
+	if (gamepath.isEmpty()) {
+		gamepath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+		if (gamepath.isEmpty()) {
+			return {};
+		}
+		QDir savedir(gamepath);
+		if (!savedir.cd("My Games") || !savedir.cd("Terraria")) {
+			return {};
+		}
+		qDebug() << savedir.absolutePath();
+		gamepath = savedir.absolutePath();
+	}
+	return QDir::toNativeSeparators(gamepath);
 }
 
-bool AppData::IsDirectoryValid(const std::string &dir)
+QString AppData::GetModDirectory()
 {
-    struct stat info;
-    if ((stat (dir.c_str(), &info) == 0) && (info.st_mode & S_IFDIR)) {
-        return true;
-    }
-    return false;
+	QString gamepath = GetAppDataDirectory();
+	if (gamepath.isEmpty()) {
+		return {};
+	}
+    QDir savedir(gamepath);
+	if (!savedir.cd("ModLoader") || !savedir.cd("Mods")) {
+		return {};
+	}
+    return QDir::toNativeSeparators(savedir.absolutePath());
 }
 
-std::string AppData::GetModDirectory()
+QStringList AppData::GetModList()
 {
-    std::string homedir = AppData::GetUserDirectory();
-#ifdef _WIN32
-    homedir.append("\\Documents\\My Games\\Terraria\\ModLoader\\Mods");
-#else
-    homedir.append("/.local/share/Terraria/ModLoader/Mods");
-#endif
-    return homedir;
-}
-
-std::vector<std::string> AppData::GetModList(const std::string &directory)
-{
-    std::vector<std::string> mods;
-    DIR *dir;
-    struct dirent *ent;
-
-    dir = opendir(directory.c_str());
-    if (dir == NULL) {
-        return mods;
-    }
-
-    while ((ent = readdir(dir)) != NULL) {
-        char *ext_start = strrchr(ent->d_name, '.');
-        if (ext_start != NULL && strcmp(".tmod", ext_start) == 0) {
-            mods.push_back(ent->d_name);
-        }
-    }
-
-    closedir(dir);
-    return mods;
+	QString modpath = GetModDirectory();
+	if (modpath.isEmpty()) {
+		return {};
+	}
+	QDir dir(modpath);
+	QStringList entries = dir.entryList({ "*.tmod" });
+	return entries;
 }

@@ -32,14 +32,18 @@ bool BinaryReader::SetFile(FILE *file)
 
 bool BinaryReader::SetFile(const std::string &fpath)
 {
-    FILE *nfile = fopen(fpath.c_str(), "rb");
+	FILE *nfile;
+    errno_t success = fopen_s(&nfile, fpath.c_str(), "rb");
+	if (success != 0) {
+		return false;
+	}
     return SetFile(nfile);
 }
 
 std::vector<uint8_t> BinaryReader::ReadBytes(long int count)
 {
     std::vector<uint8_t> result(count, 0);
-    int total = fread(&result[0], 1, count, m_file);
+    size_t total = fread(&result[0], 1, count, m_file);
     // If this check fails we've royally screwed up anyhow.
     assert(total == count);
     return result;
@@ -62,14 +66,13 @@ long int BinaryReader::GetPosition()
 
 std::string BinaryReader::ReadString()
 {
-    int stringLength = Read7BitEncodedInt();
-    if (stringLength <= 0) {
+    int len = Read7BitEncodedInt();
+    if (len <= 0) {
         return {};
     }
-    char buffer[stringLength+1];
-    fread(buffer, 1, stringLength, m_file);
-    buffer[stringLength] = 0;
-    return std::string(buffer);
+	std::string ret(len + 1, '\0');
+    fread(&ret[0], 1, len, m_file);
+    return ret;
 }
 
 uint8_t BinaryReader::ReadByte()

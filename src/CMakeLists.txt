@@ -1,14 +1,9 @@
-add_subdirectory(external)
-
-find_package(ZLIB REQUIRED)
-find_package(OpenSSL REQUIRED)
-
 add_executable(tmodmanager
     main.cxx
     util/binaryreader.cxx
     util/tmodfile.cxx
     util/appdata.cxx
-    util/filesystem.cxx
+	util/steamconfig.cxx
 )
 
 set_property(TARGET tmodmanager PROPERTY CXX_STANDARD 11)
@@ -21,7 +16,8 @@ include_directories(tmodmanager PRIVATE
 target_link_libraries(tmodmanager
     ${OPENSSL_LIBRARIES}
     ${ZLIB_LIBRARIES}
-    MinINI
+	Qt5::Widgets
+	Qt5::Network
 )
 
 install(TARGETS tmodmanager DESTINATION bin)

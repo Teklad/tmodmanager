@@ -1,6 +1,7 @@
 #ifndef  __APPDATA_H__
 #define  __APPDATA_H__
-#include <string>
+#include <QString>
+#include <QStringList>
 #include <vector>
 /**
  * @brief Very basic class for the few filesystem operations we need
@@ -8,10 +9,9 @@
  */
 class AppData {
     public:
-        static std::string GetUserDirectory();
-        static std::string GetModDirectory();
-        static std::vector<std::string> GetModList(const std::string &directory);
+        static QString GetAppDataDirectory();
+        static QString GetModDirectory();
+        static QStringList GetModList();
 
-        static bool IsDirectoryValid(const std::string &dir);
 };
 #endif //__APPDATA_H__

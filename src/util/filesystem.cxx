@@ -19,7 +19,7 @@
 #define MAKEDIR(X,Y) mkdir(X,Y)
 #endif
 
-bool FileSystem::CreateDirectory(const std::string &path, mode_t mode)
+bool FileSystem::CreateDirectory(const std::string &path)
 {
     size_t pos = path.find(DIRSEP);
     while (pos != std::string::npos) {
