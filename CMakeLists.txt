@@ -47,7 +47,10 @@ endif()
 
 find_package(Qt5Widgets CONFIG REQUIRED)
 find_package(Qt5Network CONFIG REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(PkgConfig)
+
+if (PKG_CONFIG_FOUND)
+    pkg_search_module(CryptoPP REQUIRED libcrypto++)
+endif()
 
 add_subdirectory(src)

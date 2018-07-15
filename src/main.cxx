@@ -1,10 +1,14 @@
 #include "util/appdata.h"
-#include "util/filesystem.h"
 #include "util/tmodfile.h"
+#include <QFile>
 #include <QDebug>
+#include <iostream>
 
 int main(int argc, char **argv)
 {
-    qDebug() << AppData::GetModList();
+    QString test = AppData::GetModDirectory() + "/" + AppData::GetModList()[0];
+    TMM::TmodFile f(test);
+    f.Read();
+    qDebug() << f.ListFiles();
 	return 0;
 }

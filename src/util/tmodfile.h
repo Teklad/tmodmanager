@@ -1,11 +1,10 @@
 #ifndef  _TMMUTIL_TMODFILE_H_
 #define  _TMMUTIL_TMODFILE_H_
-
-#include <string>
-#include <unordered_map>
-#include <vector>
-
 #include "binaryreader.h"
+
+#include <QVector>
+#include <QString>
+#include <QHash>
 
 namespace TMM {
 /**
@@ -34,26 +33,26 @@ class TmodFile {
             editAndContinue,
             side
         };
-        TmodFile(const std::string &path);
+        TmodFile(const QString &path);
         ~TmodFile();
-        int Read();
-        std::vector<uint8_t> GetFileData(const std::string &fileName);
-        std::vector<std::string> GetFiles();
-        std::string GetName();
-        std::string GetVersion();
-        std::string GetProperty(Prop p);
+        bool Read();
+        QByteArray GetFileData(const QString &fileName);
+        QStringList ListFiles();
+        QString GetName();
+        QString GetVersion();
+        QString GetProperty(Prop p);
     private:
         struct Properties {
-            std::vector<std::string> dllReferences;
-            std::vector<std::string> modReferences;
-            std::vector<std::string> weakReferences;
-            std::vector<std::string> sortAfter;
-            std::vector<std::string> sortBefore;
-            std::string author;
-            std::string version;
-            std::string displayName;
-            std::string homepage;
-            std::string description;
+            QVector<QString> dllReferences;
+            QVector<QString> modReferences;
+            QVector<QString> weakReferences;
+            QVector<QString> sortAfter;
+            QVector<QString> sortBefore;
+            QString author;
+            QString version;
+            QString displayName;
+            QString homepage;
+            QString description;
             bool noCompile = false;
             bool hideCode = true;
             bool hideResources = true;
@@ -63,16 +62,17 @@ class TmodFile {
             int side;
         };
         void FillProperties(BinaryReader &reader);
-        std::vector<std::string> ReadList(BinaryReader &reader);
-        std::string m_name;
-        std::string m_version;
-        std::string m_path;
-        std::string m_tModLoaderVersion;
-        uint8_t m_hash[20];
-        uint8_t m_signature[256];
-        std::vector<uint8_t> m_inflatedData;
+        QVector<QString> ReadList(BinaryReader &reader);
+        QString m_name;
+        QString m_version;
+        QString m_path;
+        QString m_tModLoaderVersion;
+        QByteArray m_hash;
+        QByteArray m_signature;
+        QByteArray m_dataCRC;
         long int m_dataLoc;
-        std::unordered_map<std::string, long int> m_files;
+
+        QHash<QString, qint64> m_files;
         Properties m_properties;
 };
 }

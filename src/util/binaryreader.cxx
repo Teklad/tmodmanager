@@ -3,94 +3,57 @@
 #include "binaryreader.h"
 
 namespace TMM {
-    
-BinaryReader::BinaryReader(FILE *file)
+
+BinaryReader::BinaryReader(const QString &file)
 {
     SetFile(file);
 }
 
-BinaryReader::BinaryReader(const std::string &fpath)
+bool BinaryReader::SetFile(const QString &file)
 {
-    SetFile(fpath);
-}
-
-BinaryReader::~BinaryReader()
-{
-    if (m_file != nullptr) {
-        fclose(m_file);
+    if (m_file != nullptr && m_file->isOpen()) {
+        m_file->close();
+        delete m_file;
     }
-}
-
-bool BinaryReader::SetFile(FILE *file)
-{
-    if (m_file != nullptr) {
-        fclose(m_file);
+    m_file = new QFile(file);
+    if (m_file->open(QFile::ReadOnly)) {
+        m_stream.setDevice(m_file);
     }
-    m_file = file;
-    return IsValid();
+    return m_file->isOpen();
 }
 
-bool BinaryReader::SetFile(const std::string &fpath)
+bool BinaryReader::IsValid()
 {
-	FILE *nfile;
-#ifdef _WIN32
-    errno_t success = fopen_s(&nfile, fpath.c_str(), "rb");
-	if (success != 0) {
-		return false;
-	}
-#else
-    nfile = fopen(fpath.c_str(), "rb");
-#endif
-    return SetFile(nfile);
+    return m_file->isOpen();
 }
 
-std::vector<uint8_t> BinaryReader::ReadBytes(long int count)
+QByteArray BinaryReader::ReadBytes(qint64 count)
 {
-    std::vector<uint8_t> result(count, 0);
-    size_t total = fread(&result[0], 1, count, m_file);
-    // If this check fails we've royally screwed up anyhow.
-    assert(total == count);
-    return result;
+    QByteArray bits = m_file->read(count);
+    return bits;
 }
 
-void BinaryReader::SetPosition(long int count)
-{
-    fseek(m_file, count, SEEK_SET);
-}
-
-void BinaryReader::SkipBytes(long int count)
-{
-    fseek(m_file, count, SEEK_CUR);
-}
-
-long int BinaryReader::GetPosition()
-{
-    return ftell(m_file);
-}
-
-std::string BinaryReader::ReadString()
+QString BinaryReader::ReadString()
 {
     int len = Read7BitEncodedInt();
     if (len <= 0) {
         return {};
     }
-	std::string ret(len + 1, '\0');
-    fread(&ret[0], 1, len, m_file);
-    return ret;
+    return m_file->read(len);
 }
 
 uint8_t BinaryReader::ReadByte()
 {
     uint8_t b;
-    fread(&b, 1, 1, m_file);
+    m_stream >> b;
     return b;
 }
 
 int BinaryReader::ReadInt32()
 {
-    uint8_t b[4];
-    fread(b, 1, 4, m_file);
-    return static_cast<int>(b[0] | b[1] << 8 | b[2] << 16 | b[3] << 24);
+    uint8_t bits[4];
+    m_stream >> bits[0] >> bits[1] >> bits[2] >> bits[3];
+    return reinterpret_cast<int>(bits[0] | bits[1] << 8 | bits[2] << 16 | bits[3] << 24);
 }
 
 int BinaryReader::Read7BitEncodedInt()
@@ -99,7 +62,9 @@ int BinaryReader::Read7BitEncodedInt()
     int shift = 0;
     uint8_t b;
     do {
-        assert(shift != 5 * 7);
+        if (shift == 5 * 7) {
+            throw "Format_Bad7BitInt32";
+        }
         b = ReadByte();
         count |= (b & 0x7F) << shift;
         shift += 7;

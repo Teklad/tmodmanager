@@ -1,86 +1,15 @@
 #include "tmodfile.h"
 
-#include <openssl/sha.h>
-#include <zlib.h>
+#include "datacache.h"
 
-#ifdef _WIN32
-#include <Windows.h>
-#include <fcntl.h>
-#include <io.h>
-
-FILE *fmemopen(void *buf, size_t len, const char *type)
-{
-	int fd;
-	FILE *fp;
-	char tp[MAX_PATH - 13];
-	char fn[MAX_PATH + 1];
-	HANDLE h;
-
-	if (!GetTempPath(sizeof(tp), tp))
-		return NULL;
-
-	if (!GetTempFileName(tp, "confuse", 0, fn))
-		return NULL;
-
-	h = CreateFile(fn, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-		CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
-	if (INVALID_HANDLE_VALUE == h)
-		return NULL;
-
-	fd = _open_osfhandle((intptr_t)h, _O_APPEND);
-	if (fd < 0) {
-		CloseHandle(h);
-		return NULL;
-	}
-
-	fp = _fdopen(fd, "w+");
-	if (!fp) {
-		CloseHandle(h);
-		return NULL;
-	}
-
-	fwrite(buf, len, 1, fp);
-	rewind(fp);
-
-	return fp;
-}
-#endif
+#include <cryptopp/sha.h>
+#include <cryptopp/hex.h>
+#include <QDebug>
 
 namespace TMM {
 
-/**
- * @brief Helper function uses zlib to decompress a data stream using
- *        the DEFLATE algorithm.
- * @param in The input data
- * @param out Output buffer
- * @return int
- * Error codes are as follows:
- *     0  - No error
- *     -1 - Inflate data error
- */
 
-static inline long int decompress(std::vector<uint8_t>& in, std::vector<uint8_t> &out)
-{
-    auto ret = Z_OK;
-    const size_t BUFSIZE = 1024 * 64;
-    uint8_t chunk[BUFSIZE];
-    z_stream zs = {Z_NULL};
-    zs.next_in = in.data();
-    zs.avail_in = in.size();
-    inflateInit2(&zs, -15);
-    do {
-        zs.next_out = chunk;
-        zs.avail_out = BUFSIZE;
-        ret = inflate(&zs, Z_NO_FLUSH);
-        if (zs.avail_out < BUFSIZE) {
-            out.insert(out.end(), chunk, chunk + BUFSIZE - zs.avail_out);
-        }
-    } while (ret == Z_OK);
-    inflateEnd(&zs);
-    return (ret != Z_STREAM_END ? -1 : zs.total_out);
-}
-
-TmodFile::TmodFile(const std::string &path)
+TmodFile::TmodFile(const QString &path)
 {
     m_path = path;
 }
@@ -94,9 +23,9 @@ TmodFile::~TmodFile()
  * @param property
  * @return string
  */
-std::string TmodFile::GetProperty(Prop p)
+QString TmodFile::GetProperty(Prop p)
 {
-    std::string propValue;
+    QString propValue;
     switch(p) {
         case Prop::dllReferences:
             for (const auto& i : m_properties.dllReferences) {
@@ -154,9 +83,6 @@ std::string TmodFile::GetProperty(Prop p)
         case Prop::editAndContinue:
             return (m_properties.editAndContinue ? "true" : "false");
     }
-    if (!propValue.empty()) {
-        propValue.pop_back();
-    }
     return propValue;
 }
 
@@ -168,40 +94,27 @@ std::string TmodFile::GetProperty(Prop p)
  * Notes:
  *     Buffer will return empty if any portion of this process fails.
  */
-std::vector<uint8_t> TmodFile::GetFileData(const std::string &fileName)
+QByteArray TmodFile::GetFileData(const QString &fileName)
 {
-    if (m_files.count(fileName) == 0) {
+    if (m_files.contains(fileName)) {
         return {};
     }
-
-    if (m_inflatedData.empty()) {
-        BinaryReader reader(m_path);
-        if (!reader.IsValid()) {
-            return {};
-        }
-        reader.SetPosition(m_dataLoc);
-        std::vector<uint8_t> data = reader.ReadBytes(reader.ReadInt32());
-        if (decompress(data, m_inflatedData) < 0) {
-            return {};
-        }
-    }
-
-    BinaryReader reader(fmemopen(m_inflatedData.data(), m_inflatedData.size(), "rb"));
+    BinaryReader reader(DataCache::GetInstance().GetData(m_hash));
     if (!reader.IsValid()) {
         return {};
     }
-    reader.SetPosition(m_files.at(fileName));
+    reader.SetPosition(m_files.value(fileName));
     return reader.ReadBytes(reader.ReadInt32());
 }
 
 /**
  * @brief Continuously reads from BinaryReader into a vector of strings until a 0 read.
  * @param reader
- * @return std::vector<std::string>
+ * @return QVector<QString>
  */
-std::vector<std::string> TmodFile::ReadList(TMM::BinaryReader &reader)
+QVector<QString> TmodFile::ReadList(TMM::BinaryReader &reader)
 {
-    std::vector<std::string> li;
+    QVector<QString> li;
     for (auto item = reader.ReadString(); item.length() > 0; item = reader.ReadString()) {
         li.push_back(item);
     }
@@ -276,85 +189,74 @@ void TmodFile::FillProperties(TMM::BinaryReader &reader)
 /**
  * @brief Reads the mod file data into the class structure so we can
  *        display the information to the user.
- * @return int
- * Return codes are as follows:
- *      0 - no error
- *     -1 - File open error
- *     -2 - TMOD Header missing
- *     -3 - Hash mismatch
- *     -4 - Data decompression error
- *     -5 - Memory stream open error
+ * @return bool
  */
-int TmodFile::Read()
+bool TmodFile::Read()
 {
     BinaryReader reader(m_path);
-    if (!reader.IsValid()) {
-        return -1;
-    }
-    std::vector<uint8_t> header = reader.ReadBytes(4);
-    if(!std::equal(header.begin(), header.end(), "TMOD")) {
-        return -2;
-    }
-    m_tModLoaderVersion = reader.ReadString();
-    std::vector<uint8_t> hash = reader.ReadBytes(20);
-    std::copy(hash.begin(), hash.end(), m_hash);
-    std::vector<uint8_t> signature = reader.ReadBytes(256);
-    std::copy(signature.begin(), signature.end(), m_signature);
-    m_dataLoc = reader.GetPosition();
-    std::vector<uint8_t> data = reader.ReadBytes(reader.ReadInt32());
-
-    // Verify data integrity of the mod.
-    uint8_t checksum[20];
-    SHA1(data.data(), data.size(), checksum);
-    if (!std::equal(m_hash, m_hash+20, checksum)) {
-        return -3;
-    }
-
-    // Decompress the mod data for reading.
-    std::vector<uint8_t> inflated;
-    inflated.reserve(data.size() * 4);
-    if (decompress(data, inflated) < 0) {
-        return -4;
-    }
-
-    if (!reader.SetFile(fmemopen(inflated.data(), inflated.size(), "rb"))) {
-        return -5;
-    }
-    m_name = reader.ReadString();
-    m_version = reader.ReadString();
-    int fileCount = reader.ReadInt32();
-    for (auto i = 0; i < fileCount; ++i) {
-        std::string fileName = reader.ReadString();
-        int fileDataLoc = reader.GetPosition();
-        if (fileName == "Info") {
-            reader.ReadInt32();
-            FillProperties(reader);
-        }else {
-            reader.SkipBytes(reader.ReadInt32());
+    try {
+        if (!reader.IsValid()) {
+            throw "Reader state";
         }
-        m_files.emplace(std::make_pair(std::move(fileName), std::move(fileDataLoc)));
+        QByteArray header = reader.ReadBytes(4);
+        if(!std::equal(header.begin(), header.end(), "TMOD")) {
+            throw "Malformed header";
+        }
+        m_tModLoaderVersion = reader.ReadString();
+        m_hash = reader.ReadBytes(20);
+        m_signature = reader.ReadBytes(256);
+        m_dataLoc = reader.GetPosition();
+        int datalen = reader.ReadInt32();
+        QByteArray data = reader.ReadBytes(datalen);
+        // Verify data integrity of the mod.
+        CryptoPP::SHA1 sha1;
+        QByteArray computedHash(20, 0);
+        CryptoPP::ArraySource((uint8_t*)data.data(), data.size(), true,
+            new CryptoPP::HashFilter(sha1,
+                new CryptoPP::ArraySink(reinterpret_cast<uint8_t*>(computedHash.data()), 20)
+            )
+        );
+        if (m_hash != computedHash) {
+            throw "SHA1 mismatch";
+        }
+
+        reader.SetFile(DataCache::GetInstance().GetData(m_hash.toHex(), data));
+        if (!reader.IsValid()) {
+            throw "Reader state";
+        }
+        m_name = reader.ReadString();
+        m_version = reader.ReadString();
+        int count = reader.ReadInt32();
+        for (int i = 0; i < count; i++) {
+            QString fileName = reader.ReadString();
+            qint64 fileDataLoc = reader.GetPosition();
+            int fileLength = reader.ReadInt32();
+            if (fileName == "Info") {
+                FillProperties(reader);
+            }else {
+                reader.SkipBytes(fileLength);
+            }
+            m_files.insert(std::move(fileName), std::move(fileDataLoc));
+        }
+    } catch (const char* e) {
+        return false;
     }
-    return 0;
+    return true;
 }
 
-std::string TmodFile::GetName()
+QString TmodFile::GetName()
 {
     return m_name;
 }
 
-std::string TmodFile::GetVersion()
+QString TmodFile::GetVersion()
 {
     return m_version;
 }
 
-std::vector<std::string> TmodFile::GetFiles()
+QStringList TmodFile::ListFiles()
 {
-    std::vector<std::string> keys;
-    keys.reserve(m_files.size());
-    for (auto k : m_files) {
-        keys.push_back(k.first);
-    }
-    return keys;
+    return m_files.keys();
 }
 
 }

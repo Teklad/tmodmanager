@@ -1,9 +1,8 @@
 #ifndef  _TMMUTIL_BINARYREADER_H_
 #define  _TMMUTIL_BINARYREADER_H_
 
-#include <stdint.h>
-#include <string>
-#include <vector>
+#include <QDataStream>
+#include <QFile>
 
 namespace TMM {
 /**
@@ -12,22 +11,20 @@ namespace TMM {
  */
 class BinaryReader {
     public:
-        BinaryReader(FILE *file);
-        BinaryReader(const std::string &fpath);
-        ~BinaryReader();
-        bool SetFile(FILE *file);
-        bool SetFile(const std::string &fpath);
-        bool IsValid() { return (m_file != nullptr); }
-        void SkipBytes(long int count);
-        std::vector<uint8_t> ReadBytes(long int count);
-        void SetPosition(long int count);
-        long int GetPosition();
-        std::string ReadString();
+        BinaryReader(const QString &name);
+        bool SetFile(const QString &fpath);
+        bool IsValid();
+        qint64 GetPosition() {return m_file->pos();}
+        bool SetPosition(qint64 pos) {return m_file->seek(pos);}
+        bool SkipBytes(qint64 bytes) {return m_file->skip(bytes);}
+        QByteArray ReadBytes(qint64 count);
+        QString ReadString();
         uint8_t ReadByte();
         int ReadInt32();
     private:
-        FILE *m_file = nullptr;
         int Read7BitEncodedInt();
+        QFile *m_file = nullptr;
+        QDataStream m_stream;
 };
 }
 

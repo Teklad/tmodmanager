@@ -2,7 +2,6 @@
 
 #include <QDir>
 #include <QStandardPaths>
-#include <QDebug>
 
 QString AppData::GetAppDataDirectory()
 {
